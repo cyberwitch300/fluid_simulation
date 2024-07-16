@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Fluid Simulation</title>
+  <meta charset="utf-8"/>
+  <style>
+    html, body { margin: 0; padding: 0; background-color: #000; }
+    canvas { position: absolute; top: 0; left: 0; z-index: 0; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <!-- Shader Scripts -->
+  <script type="x-shader/x-fragment" id="fluid-solver">
+    // TO DO: fluid solver shader 
+  </script>
+
+  <script type="x-shader/x-fragment" id="fluid-dye">
+    // TO DO: fluid dye shader 
+  </script>
+
+
+  <script src="js/fluid.js"></script>
+  <script src="js/motion.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/rtt.js"></script>
+  <script>
+    (function() {
+      var canvas = document.getElementById('canvas');
+      var gl = canvas.getContext('webgl');
+      if (!gl) {
+        alert('WebGL not supported');
+        return;
+      }
+
+      // Adjust canvas size to the window size
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      const CELLS = 256;
+      const TIMESTEP = 0.25;
+
+      var particles = new Particles(gl);
+      var motion = new Motion(gl, particles);
+      //var fluid = new Fluid(gl, CELLS, TIMESTEP);
+
+      function render() {
+        //motion.update();
+        //fluid.update(motion.output); 
+        //particles.update(fluid); // based on fluid
+        particles.update();
+        particles.draw();
+        requestAnimationFrame(render);
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>
