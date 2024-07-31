@@ -1,0 +1,67 @@
+<!-- Particle vertex shader: Sets the position and size of each particle -->
+<script type="application/x-glsl" id="vertex-particles">
+  precision highp float;
+
+  attribute vec2 position;                // Particle position attribute
+  varying vec2 vUv;                       // Interpolated UV coordinates
+
+  uniform sampler2D particleDataTexture; // Texture sampler for particle data
+  uniform float aspectRatio;             // Aspect ratio of the canvas
+
+  void main() {
+    // Fetch particle data from the texture
+    vec4 data = texture2D(particleDataTexture, position); 
+
+    // Extract the particle's position and size
+    vec2 point = data.xy; 
+    float size = data.z;  
+
+    // Pass position to fragment shader
+    vUv = position; 
+    vec2 vPos = point * 2.0 - 1.0; // Convert to clip space
+
+    // Set the size of the point (particle) and its position in clip space
+    gl_PointSize = size * aspectRatio * 1.5; 
+    gl_Position = vec4(vPos.x, vPos.y, 0, 1); 
+  }
+</script>
+
+<!-- Particle fragment shader: Defines the color of each particle -->
+<script type="application/x-glsl" id="fragment-particles">
+  precision highp float;
+
+  varying vec2 vUv;            // Interpolated UV coordinates
+
+  uniform float aspectRatio;   // Aspect ratio of the canvas
+  uniform sampler2D tSampler;  // Texture sampler for particle data
+
+  const vec4 color = vec4(1.1, 0.1, 0.5, 1.0); // Particle color
+
+  void main() {
+    // Set the color of the particle
+    gl_FragColor = color;
+  }
+</script>
+
+<!-- Particle data shader: Computes the new position of particles based on the texture sampler for solver data -->
+<script type="application/x-glsl" id="fragment-particle-data">
+  precision highp float;
+
+  varying vec2 vUv; // Interpolated UV coordinates
+
+  uniform sampler2D tSampler;       // Texture sampler for particle data
+  uniform sampler2D solverTexture;  // Texture sampler for solver data
+  uniform float timeStep;           // Time step for the simulation
+  uniform vec2 gridSpacing;         // Grid cell spacing
+
+  void main() {
+    // Fetch the current particle data from the texture
+    vec4 data = texture2D(tSampler, vUv); 
+
+    // Update the particle's position based on the solver texture and timestep
+    data.xy += timeStep * texture2D(solverTexture, data.xy).xy * gridSpacing * 2.0; 
+
+    // Output the updated particle data
+    gl_FragColor = data; 
+  }
+</script>

@@ -1,0 +1,35 @@
+<!-- Motion Shader (Fluid) -->
+<script type="application/x-glsl" id="fluid-motion">
+  precision highp float;
+  varying vec2 vUv;
+
+  uniform sampler2D tSampler;
+  uniform float aspectRatio;
+  uniform vec2 curPos;
+  uniform vec2 velocity;
+
+  const float VELOCITY_RADIUS = 800.0;
+  const float VELOCITY_SCALE = 300.0;
+
+  void main() {
+    gl_FragColor = texture2D(tSampler, vUv);
+
+    vec2 pos = vUv * vec2(aspectRatio, 1.0);
+    vec2 adjustMousePos = curPos * vec2(aspectRatio, 1.0);
+
+    // Calculate the Gaussian function:
+    // Creates a bell-curve-like effect around the adjusted mouse position.
+    // It calculates the negative dot product of the distance between the current position and the mouse position,
+    // creating a smooth transition in values that decay exponentially with distance from the mouse position.
+    
+    float gaussian = -dot(pos - adjustMousePos, pos - adjustMousePos);
+
+    // Apply the Gaussian function to the velocity:
+    // The velocity is scaled by the Gaussian function, creating a smooth gradient of influence around the mouse.
+    // VELOCITY_RADIUS controls the spread of the influence, and VELOCITY_SCALE scales the velocity values.
+
+    vec2 vel = velocity * exp(gaussian * VELOCITY_RADIUS) * VELOCITY_SCALE;
+    vel = clamp(vel, -0.5, 0.5); // Clamp velocity to avoid extreme values
+    gl_FragColor.xy = vel;
+  }
+</script>

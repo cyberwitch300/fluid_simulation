@@ -1,0 +1,25 @@
+<!-- Visual Shader (Fluid) -->
+<script type="application/x-glsl" id="fluid-visual">
+  precision highp float;
+  varying vec2 vUv;
+
+  uniform sampler2D samplerTexture;  
+  uniform sampler2D particlesTexture;  
+
+  void main() {
+    vec4 fluid = texture2D(samplerTexture, vUv);  
+    vec4 particles = texture2D(particlesTexture, vUv);  
+
+    // Combine fluid and particles textures
+    vec4 color = fluid + particles;
+
+    // Blend fluid and particles textures 
+    color = mix(fluid, particles, 0.8);  
+    color = color * 0.9; // reduce brightness
+    color = vec4(sqrt(color.rgb), color.a); // gamma correction
+
+    color = clamp(color, 0.0, 1.0);  // clamp combined color to avoid bright colors
+
+    gl_FragColor = color;
+  }
+</script>

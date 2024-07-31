@@ -1,0 +1,93 @@
+<!-- Fluid Dynamics Shader -->
+<script type="application/x-glsl" id="fluid-dynamics">
+  precision highp float;
+
+  varying vec2 vUv;
+
+  uniform sampler2D tSampler;         // Current fluid state texture
+  uniform sampler2D motionTexture;    // Motion texture
+  uniform float timeStep;             // Simulation time step
+  uniform vec2 gridSpacing;           // Grid cell spacing
+
+  // Cardinal directions (east, west, north, south)
+  vec2 directions[4];
+
+  vec2 dx = vec2(gridSpacing.x, 0);
+  vec2 dy = vec2(0, gridSpacing.y);
+
+  // Dynamic viscosity of water at 20°C
+  // Source: https://physics.info/viscosity/
+  const float VISCOSITY = 0.001;     
+  const float PRESSURE_FACTOR = 0.1;   
+  const float INTERPOLATION_WEIGHT = 0.5;     
+
+  // Function prototypes
+  bool isBoundary(vec2 uv);
+  vec3 bilinearInterpolation(sampler2D texture, vec2 pos);
+
+  void main() {
+    // Define directions
+    directions[0] = vec2(1, 0);  // east
+    directions[1] = vec2(0, -1); // south
+    directions[2] = vec2(-1, 0); // west
+    directions[3] = vec2(0, 1);  // north
+  
+    vec4 fluidColor = texture2D(tSampler, vUv);
+  
+    // Sample neighboring texels
+    vec3 eastColor = texture2D(tSampler, vUv + dx).xyz;
+    vec3 westColor = texture2D(tSampler, vUv - dx).xyz;
+    vec3 northColor = texture2D(tSampler, vUv + dy).xyz;
+    vec3 southColor = texture2D(tSampler, vUv - dy).xyz;
+  
+    // Compute velocity divergence for pressure
+    vec3 gradientX = (eastColor - westColor) * INTERPOLATION_WEIGHT;
+    vec3 gradientY = (northColor - southColor) * INTERPOLATION_WEIGHT;
+    vec2 velocityDivergence = vec2(gradientX.z, gradientY.z);
+    vec2 pressureEffect = (PRESSURE_FACTOR / timeStep) * velocityDivergence;
+
+    // Update pressure component
+    vec3 temp = vec3(velocityDivergence, gradientX.x + gradientY.y);
+    fluidColor.z = clamp(fluidColor.z - timeStep * dot(fluidColor.xyz, temp), 0.5, 3.0);
+
+    // Compute laplacian for viscosity
+    // Laplacian: A measure of the difference between the value at the center and its neighbors.
+    // It helps in calculating the diffusion effect for fluid viscosity.
+    vec2 laplacian = eastColor.xy + westColor.xy + northColor.xy + southColor.xy - 4.0 * fluidColor.xy;
+    vec2 viscosityEffect = VISCOSITY * laplacian;
+  
+    // Perform semi-Lagrangian advection
+    // Semi-Lagrangian advection: Trace backward in time to find the source position of the fluid and interpolate the fluid properties from there.
+    vec2 previousPosition = vUv - timeStep * fluidColor.xy * gridSpacing;
+    fluidColor.xy = bilinearInterpolation(tSampler, previousPosition).xy;
+  
+    // Apply viscosity and pressure effects
+    fluidColor.xy += timeStep * (viscosityEffect - pressureEffect + texture2D(motionTexture, vUv).xy);
+    
+  
+    // Handle boundary conditions
+    for (int i = 0; i < 4; i++) {
+      if (isBoundary(vUv + (gridSpacing * directions[i]))) {
+        fluidColor.xy *= 1.0 - abs(directions[i]);
+      }
+    }
+  
+    gl_FragColor = fluidColor;
+  }
+
+  // Function to determine if a UV coordinate is at the boundary
+  bool isBoundary(vec2 uv) {
+    return (uv.x <= gridSpacing.x || uv.x > (1.0 - gridSpacing.x) || uv.y <= gridSpacing.y || uv.y > (1.0 - gridSpacing.y));
+  }
+
+  // Bilinear interpolation for texture sampling
+  // Purpose: Smoothly sample the texture by considering the values of the neighboring texels.
+  vec3 bilinearInterpolation(sampler2D texture, vec2 pos) {
+    vec3 center = texture2D(texture, pos).xyz;
+    vec3 west = texture2D(texture, pos - dx).xyz;
+    vec3 east = texture2D(texture, pos + dx).xyz;
+    vec3 south = texture2D(texture, pos - dy).xyz;
+    vec3 north = texture2D(texture, pos + dy).xyz;
+    return (center + west + east + south + north) * 0.2; // Average of the center and its neighbors
+  }
+</script>

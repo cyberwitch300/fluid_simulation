@@ -1,30 +1,43 @@
-class Visual {
-  
-  // TODO:
+import RenderEngine from './lib/renderer.js';
+import TextureRenderer from './lib/rtt.js';
 
-      // Initialize 
-      // Store rendering context
-      // Get WebGL context
-  
-      // Define uniforms used in the shader, linking them to the fluid dye and particle textures
-       
-      // Create an RTT (Render-To-Texture) object and attach the fluid-visualizer shader to it
-       
-      // Update method to render the visualizer each frame
-      // Get the WebGL context
+class VisualEffect extends RenderEngine.Effect {
+  constructor() {
+    super();
+    this.name = 'visual';
+  }
 
-      // Update the particles uniform with the latest particles texture
-      
-      // Enable blending in WebGL to combine the textures
-      // Clear and render the RTT, then paint the final image to the canvas
-  
-      // Disable blending after rendering
-      // Paint the visualizer
-  
-      // Resize method to adjust the visualizer to match the new context size
-  
-      // Store the new context
-      // Resize the visualizer
-      
-};
-  
+  initialize(context) {
+    this.context = context;
+    const gl = context.gl;
+
+    this.uniforms = {
+      'samplerTexture': { type: 't', value: context.effects.fluid.solver.output }, 
+      'particlesTexture': { type: 't', value: context.effects.particles.particles.output }
+    };
+
+    this.visualizer = new TextureRenderer(gl, {
+      texture: { minFilter: gl.LINEAR, magFilter: gl.LINEAR }
+    }).addFragmentShader(document.getElementById('fluid-visual').textContent, this.uniforms)
+      .render();
+  }
+
+  update(context) {
+    const gl = context.gl;
+
+    this.uniforms.particlesTexture.value = context.effects.particles.particles.output;
+
+    gl.enable(gl.BLEND);
+    this.visualizer.clear().render();
+    gl.disable(gl.BLEND);
+
+    this.visualizer.displayToScreen();
+  }
+
+  resize(context) {
+    this.context = context;
+    this.visualizer.resize();
+  }
+}
+
+export default VisualEffect;
